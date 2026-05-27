@@ -1,0 +1,158 @@
+/*Used TRUNCATE TABLE and BULK INSERT commands to perform full data refresh and raw data ingestion in the Bronze Layer.*/
+
+IF OBJECT_ID  ('BRONZE.CRM_CUST_INFO','U') IS NOT NULL
+ DROP TABLE  BRONZE.CRM_CUST_INFO
+ CREATE TABLE BRONZE.CRM_CUST_INFO(
+	cst_id INT ,
+	cst_key	NVARCHAR(100),
+	cst_firstname NVARCHAR(100),	
+	cst_lastname	NVARCHAR(100),
+	cst_marital_status NVARCHAR(100),
+	cst_gndr	NVARCHAR(100),
+	cst_create_date DATE
+ );
+--------------------------------------------------------------------------------------------------------------------------------
+
+  IF OBJECT_ID  ('BRONZE.CRM_PRD_INFO','U') IS NOT NULL
+ DROP TABLE  BRONZE.CRM_PRD_INFO
+  CREATE TABLE BRONZE.CRM_PRD_INFO(
+  prd_id INT,	
+  prd_key NVARCHAR (100),
+  prd_nm NVARCHAR(100),
+ prd_cost INT,
+ prd_line NVARCHAR(100),	
+ prd_start_dt Date,
+ prd_end_dt DATE
+ );
+--------------------------------------------------------------------------------------------------------------------------------
+ 
+  IF OBJECT_ID  ('BRONZE.CRM_SALES_DETAILS','U') IS NOT NULL
+ DROP TABLE  BRONZE.CRM_SALES_DETAILS
+ CREATE TABLE BRONZE.CRM_SALES_DETAILS(
+ sls_ord_num NVARCHAR(100),
+ sls_prd_key NVARCHAR(100),
+ sls_cust_id	INT,
+ sls_order_dt   INT,
+ sls_ship_dt	INT,
+ sls_due_dt	    INT,
+ sls_sales	    INT,
+ sls_quantity   INT,
+ sls_price      INT
+ );
+--------------------------------------------------------------------------------------------------------------------------------
+
+  IF OBJECT_ID  ('BRONZE.ERP_CUST_AZ12','U') IS NOT NULL
+ DROP TABLE  BRONZE.ERP_CUST_AZ12
+CREATE TABLE BRONZE.ERP_CUST_AZ12(
+CID NVARCHAR(100),
+BDATE DATE,
+GEN NVARCHAR(20)
+);
+--------------------------------------------------------------------------------------------------------------------------------
+
+ IF OBJECT_ID  ('BRONZE.ERP_LOC_A101','U') IS NOT NULL
+ DROP TABLE  BRONZE.ERP_LOC_A101
+CREATE TABLE BRONZE.ERP_LOC_A101(
+CID NVARCHAR(30),
+CNTRY NVARCHAR(40)
+);
+--------------------------------------------------------------------------------------------------------------------------------
+
+ IF OBJECT_ID  ('BRONZE.ERP_PX_CAT_G1V2','U') IS NOT NULL
+ DROP TABLE  BRONZE.ERP_PX_CAT_G1V2
+CREATE TABLE BRONZE.ERP_PX_CAT_G1V2(
+ID	VARCHAR(50),
+CAT VARCHAR(50),
+SUBCAT	VARCHAR(50),
+MAINTENANCE VARCHAR(50)
+);
+--------------------------------------------------------------------------------------------------------------------------------
+CREATE OR ALTER PROCEDURE BRONZE.LOAD_BRONZE AS 
+BEGIN
+PRINT '============================================================';
+PRINT 'LOADING BRONZE LAYER';
+PRINT '============================================================';
+
+PRINT 'CRM TABLES';
+
+ PRINT 'TRUNCATING TABLE: BRONZE.CRM_CUST_INFO';
+ PRINT 'INSERTING INTO: BRONZE.CRM_CUST_INFO';
+
+	TRUNCATE TABLE BRONZE.CRM_CUST_INFO;
+	BULK INSERT BRONZE.CRM_CUST_INFO
+	FROM 'C:\Users\Lenovo\Downloads\data warehouse project\sql-data-warehouse-project\datasets\source_crm\cust_info.csv'
+	WITH
+	(
+	FIRSTROW=2,
+	FIELDTERMINATOR=',',
+	TABLOCK
+	);
+	---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	 PRINT 'TRUNCATING TABLE: BRONZE.CRM_PRD_INFO';
+     PRINT 'INSERTING INTO: BRONZE.CRM_PRD_INFO';
+	TRUNCATE TABLE BRONZE.CRM_PRD_INFO;
+	BULK INSERT  BRONZE.CRM_PRD_INFO
+	FROM 'C:\Users\Lenovo\Downloads\data warehouse project\sql-data-warehouse-project\datasets\source_crm\prd_info.csv'
+	WITH
+	(
+	FIRSTROW=2,
+	FIELDTERMINATOR=',',
+	TABLOCK
+	);
+
+	--------------------------------------------------------------------------------------------------------------------------------
+	 PRINT 'TRUNCATING TABLE:BRONZE.CRM_SALES_DETAILS';
+ PRINT 'INSERTING INTO:BRONZE.CRM_SALES_DETAILS';
+	TRUNCATE TABLE BRONZE.CRM_SALES_DETAILS;
+	BULK INSERT BRONZE.CRM_SALES_DETAILS
+	FROM 'C:\Users\Lenovo\Downloads\data warehouse project\sql-data-warehouse-project\datasets\source_crm\SALES_DETAILS.csv'
+	WITH
+	(
+	FIRSTROW=2,
+	FIELDTERMINATOR=',',
+	TABLOCK
+	);
+	--------------------------------------------------------------------------------------------------------------------------------
+	 PRINT 'ERP TABLES';
+
+	 
+	 PRINT 'TRUNCATING TABLE:BRONZE.ERP_CUST_AZ12';
+ PRINT 'INSERTING INTO: BRONZE.ERP_CUST_AZ12';
+
+	TRUNCATE TABLE BRONZE.ERP_CUST_AZ12;
+	BULK INSERT BRONZE.ERP_CUST_AZ12
+	FROM 'C:\Users\Lenovo\Downloads\data warehouse project\sql-data-warehouse-project\datasets\source_erp\CUST_AZ12.csv'
+	WITH
+	(
+	FIRSTROW=2,
+	FIELDTERMINATOR=',',
+	TABLOCK
+	);
+
+--------------------------------------------------------------------------------------------------------------------------------
+	 PRINT 'TRUNCATING TABLE: BRONZE.ERP_LOC_A101';
+     PRINT 'INSERTING INTO: BRONZE.ERP_LOC_A101';
+	TRUNCATE TABLE BRONZE.ERP_LOC_A101;
+	BULK INSERT BRONZE.ERP_LOC_A101
+	FROM 'C:\Users\Lenovo\Downloads\data warehouse project\sql-data-warehouse-project\datasets\source_erp\LOC_A101.csv'
+	WITH
+	(
+	FIRSTROW=2,
+	FIELDTERMINATOR=',',
+	TABLOCK
+	);
+	--------------------------------------------------------------------------------------------------------------------------------
+	
+	 PRINT 'TRUNCATING TABLE:BRONZE.ERP_PX_CAT_G1V2';
+     PRINT 'INSERTING INTO: BRONZE.ERP_PX_CAT_G1V2';
+
+	TRUNCATE TABLE BRONZE.ERP_PX_CAT_G1V2;
+	BULK INSERT BRONZE.ERP_PX_CAT_G1V2
+	FROM 'C:\Users\Lenovo\Downloads\data warehouse project\sql-data-warehouse-project\datasets\source_erp\PX_CAT_G1V2.csv'
+	WITH
+	(
+	FIRSTROW=2,
+	FIELDTERMINATOR=',',
+	TABLOCK
+	);
+END;
