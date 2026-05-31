@@ -1,4 +1,17 @@
+/* The Silver layer serves as the data quality and transformation layer, where raw source data is converted into a clean, consistent, and business-ready 
+format before being consumed by downstream analytical processes and the Gold layer.
 
+Objectives
+
+The primary objectives of this procedure are:
+
+Remove duplicate records.
+Standardize inconsistent values.
+Handle null, invalid, and missing data.
+Correct formatting issues.
+Convert source data into business-friendly formats.
+Improve data quality and consistency.
+Prepare data for reporting and analytics. */
 
 
 CREATE OR ALTER PROCEDURE SILVER.LOAD_SILVER AS
