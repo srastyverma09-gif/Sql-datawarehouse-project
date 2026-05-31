@@ -1,1 +1,207 @@
+/*  This script contains quality checks for all the 6 tables. 
+Data Quality Checks (Silver Layer)
+
+The purpose of this script is to validate and improve data quality by identifying:
+
+Duplicate records
+Null and missing values
+Invalid dates and numeric values
+Data standardization issues
+Referential integrity issues
+Formatting inconsistences
+
+These checks should be executed after the Silver layer has been successfully loaded to ensure the 
+data is clean, consistent, and ready for downstream processing and reporting.*/
+
+ ------------------------------------------------------------------------------------------------------------
+--QUALITY CHECK  SILVER.CRM_CUST_INFO
+ ------------------------------------------------------------------------------------------------------------
+--FOR DUPLICATES
+SELECT CST_ID, COUNT(*) 
+FROM SILVER.CRM_CUST_INFO
+GROUP BY  CST_ID
+HAVING COUNT(*)>1
+-----------------------------------------------------------------------------------------------------------------------------
+--FOR LEADING AND TRAILING SPACE
+SELECT  cst_firstname,cst_lastname
+FROM SILVER.CRM_CUST_INFO
+WHERE cst_firstname<>TRIM(cst_firstname) AND
+cst_lastname<>TRIM(cst_lastname)
+-----------------------------------------------------------------------------------------------------------------------------
+--DATA STANDARDRIZATION AND CONSISTENCY CHECK
+SELECT cst_marital_status,
+cst_gndr
+FROM SILVER.CRM_CUST_INFO
+WHERE cst_marital_status  NOT IN('SINGLE','MARRIED','N/A') AND
+      cst_gndr NOT IN ('FEMALE','MALE','N/A')
+
+      ------------------OR------------------
+SELECT DISTINCT cst_marital_status
+FROM SILVER.CRM_CUST_INFO
+
+SELECT DISTINCT cst_gndr
+FROM SILVER.CRM_CUST_INFO  
+-----------------------------------------------------------------------------------------------------------------------------
+--FOR DATE
+SELECT CST_CREATE_DATE
+FROM SILVER.CRM_CUST_INFO
+WHERE TRY_CAST(CST_CREATE_DATE AS DATE ) IS NULL
+        AND CST_CREATE_DATE IS NOT NULL
+
+
+
+--------------------------------------------------------------------------------------
+--QUALITY CHECK SILVER.CRM_PRD_INFO:
+--------------------------------------------------------------------------------------
+
+
+--DUPLICATES VALUE
+SELECT COUNT(*)  PRD_ID
+FROM SILVER.CRM_PRD_INFO
+WHERE PRD_ID IS NOT NULL
+GROUP BY PRD_ID
+HAVING COUNT(*)>1 
+--------------------------------------------------------------------------------------
+--DIVINDIG DATA AND CHECKING NULLS IN PRD_KEY
+SELECT PRD_KEY,
+        REPLACE(SUBSTRING(PRD_KEY,1,5),'-','_') AS CATEGORY,
+               (SUBSTRING(PRD_KEY,7,LEN(PRD_KEY))) AS PRD_KEY
+FROM SILVER.CRM_PRD_INFO
+WHERE PRD_KEY IS NULL
+--------------------------------------------------------------------------------------
+--CHECK FOR NEGATIVE AND NULL PRD_COST
+SELECT COALESCE(PRD_COST,0)PRD_COST
+FROM SILVER.CRM_PRD_INFO
+WHERE PRD_COST IS NULL OR PRD_COST <>ABS(PRD_COST)
+--------------------------------------------------------------------------------------
+--DATA STANDARDIZATION 
+SELECT DISTINCT
+PRD_LINE 
+FROM SILVER.CRM_PRD_INFO
+--------------------------------------------------------------------------------------
+--CHECK FOR INVALID DATES
+select
+prd_start_dt,
+lead(prd_start_dt) over (partition by prd_key order by prd_start_dt )as prd_end_dt
+from  silver .CRM_PRD_INFO
+
+
+
+-----------------------------------------------------------------------------------------------------------
+-- QUALITY CHECK SLS_CUST_ID
+-----------------------------------------------------------------------------------------------------------
+
+
+--FOR NULLS 
+ SELECT SLS_ORD_NUM, SLS_CUST_ID
+ FROM SILVER.CRM_SALES_DETAILS
+ WHERE  SLS_ORD_NUM  IS NULL AND  sls_cust_id IS NULL 
+ ------------------------------------------------------------------------------------------------------------
+
+ -- FOR UNAVAILABLE PRODUCT KEY(PRD_KEY PRESENT IN SILVER.CRM_SALES_DETAILS BUT NOT IN SILVER.CRM_PRD_INFO)
+SELECT SLS_PRD_KEY
+FROM SILVER.CRM_SALES_DETAILS
+WHERE SLS_PRD_KEY NOT IN (SELECT PRD_KEY FROM SILVER.CRM_PRD_INFO )
+ ------------------------------------------------------------------------------------------------------------
+
+ -- FOR UNAVAILABLE CUSTOMER ID (CUST_ID PRESENT IN SILVER.CRM_SALES_DETAILS BUT NOT IN SILVER.CRM_CUST_INFO)
+SELECT SLS_CUST_ID 
+FROM SILVER.CRM_SALES_DETAILS
+WHERE SLS_CUST_ID  NOT IN (SELECT CST_ID FROM SILVER.CRM_CUST_INFO)
+ ------------------------------------------------------------------------------------------------------------
+ --ORDER DATE
+ SELECT SLS_ORDER_DT
+ FROM SILVER.CRM_SALES_DETAILS
+ WHERE LEN(SLS_ORDER_DT)<>8
+ ------------------------------------------------------------------------------------------------------------ 
+ --CONVERT INTEGER ORDER DATE TO STRING THEN TO DATE
+ SELECT   CAST(CAST(SLS_ORDER_DT AS VARCHAR) AS DATE) SLS_ORDER_DT
+  FROM SILVER.CRM_SALES_DETAILS
+  WHERE LEN(SLS_ORDER_DT)=8
+ ------------------------------------------------------------------------------------------------------------ 
+--SHIPDATE
+ SELECT SLS_ORDER_DT
+ FROM SILVER.CRM_SALES_DETAILS
+ WHERE LEN(SLS_ORDER_DT)<>8 OR SLS_ORDER_DT IS NULL
+ ------------------------------------------------------------------------------------------------------------ 
+ --CONVERT INTEGER ORDER DATE TO STRING THEN TO DATE
+ SELECT   CAST(CAST(SLS_SHIP_DT AS VARCHAR) AS DATE) SLS_SHIP_DT
+  FROM SILVER.CRM_SALES_DETAILS
+  WHERE LEN(SLS_SHIP_DT)=8
+ ------------------------------------------------------------------------------------------------------------ 
+   --DUE DATE
+ SELECT SLS_DUE_DT
+ FROM SILVER.CRM_SALES_DETAILS
+ WHERE LEN(SLS_DUE_DT)=8 
+
+ ------------------------------------------------------------------------------------------------------------ 
+ --CONVERT INTEGER DUE DATE TO STRING THEN TO DATE
+ SELECT   CAST(CAST(SLS_DUE_DT AS VARCHAR) AS DATE) SLS_DUE_DT
+  FROM SILVER.CRM_SALES_DETAILS
+  WHERE LEN(SLS_DUE_DT)=8 OR
+            SLS_DUE_DT<SLS_ORDER_DT
+------------------------------------------------------------------------------------------------------------ 
+--NULLS , ZEROS OR NEGATIVE VALUES IN SLS_SALES
+SELECT SLS_SALES 
+FROM   SILVER.CRM_SALES_DETAILS
+WHERE  SLS_SALES<> ABS(SLS_SALES ) OR SLS_SALES  IS NULL OR SLS_SALES =0
+------------------------------------------------------------------------------------------------------------ 
+--NULLS , ZEROS OR NEGATIVE VALUES IN SLS_QUANTITY
+SELECT SLS_QUANTITY 
+FROM   SILVER.CRM_SALES_DETAILS
+WHERE SLS_QUANTITY<> ABS(SLS_QUANTITY ) OR SLS_QUANTITY  IS NULL OR SLS_QUANTITY =0
+------------------------------------------------------------------------------------------------------------
+--NULLS , ZEROS OR NEGATIVE VALUES IN SLS_PRICE
+SELECT SLS_PRICE 
+FROM   SILVER.CRM_SALES_DETAILS
+WHERE  SLS_PRICE<> ABS(SLS_PRICE ) OR SLS_PRICE  IS NULL OR SLS_PRICE=0
+
+ ----------------------------------------------------------------------------------------------------------
+-- QUALITY CHECK  SILVER.ERP_CUST_AZ12
+--------------------------------------------------------------------------------------
+--REMOVE 'NAS' AS PREFIX
+SELECT CID
+FROM SILVER.ERP_CUST_AZ12
+WHERE CID LIKE 'NAS%'
+--------------------------------------------------------------------------------------
+--BIRTHDATE CHECK 
+SELECT BDATE 
+FROM SILVER.ERP_CUST_AZ12
+WHERE BDATE>GETDATE()
+--------------------------------------------------------------------------------------
+--GENDER CHECK
+SELECT DISTINCT GEN
+FROM SILVER.ERP_CUST_AZ12
+
+
+
+--------------------------------------------------------------------------------------
+-- QUALITY CHECK SILVER.ERP_LOC_A101
+--------------------------------------------------------------------------------------
+
+
+
+--REPLACE '-' AND CHECK NULL
+SELECT REPLACE(CID,'-','') CID FROM  SILVER.ERP_LOC_A101
+WHERE CID IS NULL
+--------------------------------------------------------------------------------------
+--CHECK DISTINCT COUNTRY 
+SELECT DISTINCT CNTRY FROM SILVER.ERP_LOC_A101
+
+
+ ------------------------------------------------------------------------------------
+-- QUALITY CHECK SILVER.ERP_PX_CAT_G1V2
+-------------------------------------------------------------------------------------
+
+ --CHECK CAT
+ SELECT DISTINCT CAT FROM SILVER.ERP_PX_CAT_G1V2
+ WHERE LEN( CAT)!=LEN(TRIM(CAT))
+ ------------------------------------------------------------------------------------------------------------
+--CHECK SUBCAT
+ SELECT DISTINCT SUBCAT FROM SILVER.ERP_PX_CAT_G1V2
+ WHERE LEN(SUBCAT)!=LEN(TRIM(SUBCAT))
+ ------------------------------------------------------------------------------------------------------------
+--CHECK DISTINCT VALUES IN MAINTENANCE:
+SELECT DISTINCT MAINTENANCE FROM SILVER.ERP_PX_CAT_G1V2
+
 
